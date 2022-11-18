@@ -1,0 +1,52 @@
+#lang zuo
+
+(provide-targets targets-at)
+
+(define (targets-at at-dir [vars (hash)])
+  (define gameplan (at-dir (.exe "gameplan")))
+
+  (define gameplan.c (at-source "gameplan.c"))
+  (define gameplan.h (at-source "gameplan.h"))
+  (define gameplan.o (at-dir (.c->.o "gameplan")))
+  (define dictionary.c (at-source "dictionary.c"))
+  (define dictionary.h (at-source "dictionary.h"))
+  (define dictionary.o (at-dir (.c->.o "dictionary")))
+  (define memory.c (at-source "memory.c"))
+  (define memory.h (at-source "memory.h"))
+  (define memory.o (at-dir (.c->.o "memory")))
+  (define string.c (at-source "string.c"))
+  (define string.h (at-source "string.h"))
+  (define string.o (at-dir (.c->.o "string")))
+
+  (define config-in
+	(hash 'prefix "install"
+		  'CC "clang"
+		  'CPPFLAGS ""
+		  'CFLAGS "-Wall -Wextra -pedantic -g -O0 -std=c17 -Wno-unused-function"
+		  'LDFLAGS ""
+		  'LIBS ""))
+  (define config (foldl (lambda (key config)
+						  (hash-set config key (hash-ref vars key)))
+						config-in
+						(hash-keys vars)))
+  (define install-prefix (hash-ref config 'prefix))
+
+  (make-targets
+	`([:target ,gameplan (,gameplan.o ,dictionary.o ,memory.o ,string.o)
+			   ,(lambda (dest token)
+				  (c-link dest (list gameplan.o dictionary.o memory.o string.o) config))]
+	  [:target ,gameplan.o (,gameplan.c ,gameplan.h)
+			   ,(lambda (dest token)
+          (c-compile dest gameplan.c config))]
+	  [:target ,dictionary.o (,dictionary.c ,dictionary.h)
+			   ,(lambda (dest token)
+				  (c-compile dest dictionary.c config))]
+	  [:target ,memory.o (,memory.c ,memory.h)
+			   ,(lambda (dest token)
+				  (c-compile dest memory.c config))]
+	  [:target ,string.o (,string.c ,string.h)
+			   ,(lambda (dest token)
+				  (c-compile dest string.c config))]
+	  [:target clean ()
+			   ,(lambda (token)
+				  (for-each rm* (list gameplan.o dictionary.o memory.o string.o gameplan)))])))

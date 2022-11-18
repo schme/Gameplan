@@ -1,0 +1,18 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/clang",
+      "-Wall",
+      "-Wextra",
+      "-pedantic",
+      "-std=c17",
+      "-c",
+      "-o",
+      "string.o",
+      "../../c/string.c"
+    ],
+    "directory": "/x/koodi/gameplan/tests/c",
+    "file": "/x/koodi/gameplan/c/string.c",
+    "output": "/x/koodi/gameplan/tests/c/string.o"
+  }
+]

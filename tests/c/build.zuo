@@ -1,0 +1,48 @@
+#lang zuo
+
+(provide-targets targets-at)
+
+(define (targets-at at-dir [vars (hash)])
+  (define run_tests (at-dir (.exe "run_tests")))
+
+  (define test_main.cpp (at-source "test_main.cpp"))
+  (define test_main.o (at-dir (.c->.o "run_tests")))
+
+  (define test_string.cpp (at-source "test_string.cpp"))
+  (define test_string.o (at-dir (.c->.o "test_string")))
+
+  (define string.c (at-source "../../c/string.c"))
+  (define string.o (at-dir (.c->.o "string")))
+
+  (define config-in-cpp
+    (hash 'CC "clang++"
+          'CFLAGS "-Wall -Wextra -std=c++17"))
+  (define config-in-c
+    (hash 'CC "clang"
+          'CFLAGS "-Wall -Wextra -pedantic -std=c17"))
+
+  (define config-cpp (foldl (lambda (key config)
+                          (hash-set config key (hash-ref vars key)))
+                        config-in-cpp
+                        (hash-keys vars)))
+  (define config-c (foldl (lambda (key config)
+                          (hash-set config key (hash-ref vars key)))
+                        config-in-c
+                        (hash-keys vars)))
+
+  (make-targets
+    `([:target ,run_tests (,test_main.o ,test_string.o ,string.o)
+               ,(lambda (dest token)
+                  (c-link dest (list test_main.o test_string.o string.o) config-cpp))]
+      [:target ,test_main.o (,test_main.cpp)
+               ,(lambda (dest token)
+                  (c-compile dest test_main.cpp config-cpp))]
+      [:target ,test_string.o (,test_string.cpp ,string.o)
+               ,(lambda (dest token)
+                  (c-compile dest test_string.cpp config-cpp))]
+      [:target ,string.o (,string.c)
+               ,(lambda (dest token)
+                  (c-compile dest string.c config-c))]
+      [:target clean ()
+               ,(lambda (token)
+                  (for-each rm* (list test_main.o test_string.o string.o run_tests)))])))
