@@ -1,0 +1,4 @@
+#lang zuo
+
+(require "../c/build.zuo")
+(build/command-line* targets-at at-source)
