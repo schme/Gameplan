@@ -2,9 +2,13 @@
 #define GAMEPLAN_COMMON_H_
 
 #ifdef NDEBUG
+#ifndef TRACE_ENABLE
 #define TRACE_ENABLE 0
+#endif
 #else
+#ifndef TRACE_ENABLE
 #define TRACE_ENABLE 1
+#endif
 #endif
 
 #define TRACE_PRINT(F, X)                                                      \

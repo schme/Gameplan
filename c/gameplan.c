@@ -19,6 +19,7 @@
 #endif
 
 static inline void gexp_error(const char *msg) { fprintf(stderr, "%s\n", msg); }
+Gstring gp_gexptostr(gexp e);
 
 static gexp Gmul_op(gexp *gsp);
 
@@ -65,7 +66,7 @@ TokenStorage *gp_tokenize(const char *program) {
 
   TokenStorage *tokens = malloc(sizeof(TokenStorage) + sizeof(char *) * 9);
   tokens->len = 9;
-  char *tokes[9] = {"(", "*", "pi", "(", "*", "5", "5.0", ")", ")"};
+  char *tokes[9] = {"(", "*", "pi", "(", "*", "5", "5.000000000", ")", ")"};
 
   memcpy(tokens->tokens, tokes, tokens->len * sizeof(char *));
   return tokens;
@@ -76,9 +77,7 @@ static inline bool gp_parse_fixval(const char *token, int token_length,
   char *end = 0;
   i64 fixval = strtol(token, &end, 0);
   if (end == token + token_length) {
-    TRACE_PRINT("Fixnum! %ld", fixval);
-    atom->tag = GEXP_TYPE_FIXNUM;
-    atom->val.fixnum = fixval;
+    Gexp_fixnum(atom, fixval);
     return true;
   }
   return false;
@@ -89,9 +88,7 @@ static inline bool gp_parse_flonum(const char *token, int token_length,
   char *end = 0;
   f64 floval = strtod(token, &end);
   if (end == token + token_length) {
-    TRACE_PRINT("Flonum! %g", floval);
-    atom->tag = GEXP_TYPE_FLONUM;
-    atom->val.flonum = floval;
+    Gexp_flonum(atom, floval);
     return true;
   }
   return false;
@@ -108,10 +105,8 @@ gexp gp_build_atom(const char *token) {
     return atom;
 
   /* symbol */
-  atom->tag = GEXP_TYPE_SYMBOL;
-  atom->val.symbol = Gstr(token, token_length);
+  Gexp_symbol(atom, Gstr(token, token_length));
 
-  TRACE_PRINT("Symbol! %s", Gstring_get_str(&atom->val.symbol));
   return atom;
 }
 
@@ -134,9 +129,9 @@ gexp gp_parse_expr(TokenView *tokens) {
 
     const char *token = token_pop(tokens);
 
+    current = Gheap_alloc(&top_heap);
     if (token[0] == ')') {
-      current = Gheap_alloc(&top_heap);
-      current->tag = GEXP_TYPE_VOID;
+      Gexp_void(current);
 
       if (!prev) {
         gexp_error("Syntax error!: ')'");
@@ -144,22 +139,17 @@ gexp gp_parse_expr(TokenView *tokens) {
       }
 
       assert(Gpairp(prev));
-      prev->val.pair.cdr = current;
+      gexp prev_car = Gexp_car(prev);
+      prev_car = current;
       return start;
 
     } else if (token[0] == '(') {
-      current = Gheap_alloc(&top_heap);
-      current->tag = GEXP_TYPE_PAIR;
-      current->val.pair.car = gp_parse_expr(tokens);
+      Gexp_pair(current, gp_parse_expr(tokens), 0);
 
     } else {
-
       /* atom */
-      current = Gheap_alloc(&top_heap);
-      current->tag = GEXP_TYPE_PAIR;
-
       gexp atom = gp_build_atom(token);
-      current->val.pair.car = atom;
+      Gexp_pair(current, atom, 0);
     }
 
     if (!start)
@@ -185,12 +175,13 @@ gexp gp_parse(TokenStorage *tokens) {
 
 gexp Gread(const char *program) { return gp_parse(gp_tokenize(program)); }
 
-gexp Gmul_op(gexp *gsp) {
+gexp Gmul_op(gexp *stackptr) {
   flonum floval = 1;
   fixnum fixval = 1;
   bool decay_to_flonum = false;
   gexp n = 0;
-  while ((n = Gstack_pop(&top_stack)) != *gsp) {
+  /* Unwind stack until we hit the proc itself, pop it and write result */
+  while ((n = Gstack_pop(&top_stack)) != *stackptr) {
     assert(!Gstack_empty(&top_stack));
 
     /* Here we do a sort of exact-inexact decay, where if there is any flonum,
@@ -208,7 +199,7 @@ gexp Gmul_op(gexp *gsp) {
       }
       floval *= Gexp_unbox_flonum(n);
     } else {
-      gexp_error("Syntax error!");
+      gexp_error("Gmul_op: Syntax error!");
     }
   }
 
@@ -216,30 +207,46 @@ gexp Gmul_op(gexp *gsp) {
   return decay_to_flonum ? Gexp_flonum(ret, floval) : Gexp_fixnum(ret, fixval);
 }
 
+static void debug_print_stack(Gstack *stack) {
+  gexp *bottom = stack->bottom;
+  gexp *top = stack->top;
+  while (bottom != top) {
+    Gstring e = gp_gexptostr(*bottom++);
+    printf("%s ", Gstrget(&e));
+  }
+  printf("\n");
+}
+
 gexp Geval(gexp e) {
-  if (!e)
+#ifdef DEBUG_VERBOSE
+  debug_print_stack(&top_stack);
+#endif
+  if (!e) {
     return 0;
+  }
 
   if (Gpairp(e)) {
     gexp car = Gexp_car(e);
-    gexp car_res = 0;
+    gexp car_ret = 0;
     if (car) {
-      car_res = Geval(car);
+      car_ret = Geval(car);
     }
 
     gexp *gsp = 0;
-    if (Gprocp(car_res)) {
-      gsp = top_stack.top;
-      Gstack_push(&top_stack, car_res);
-    }
+    gsp = top_stack.top - 1;
 
     gexp cdr = Gexp_cdr(e);
     if (cdr) {
       Geval(cdr);
     }
 
-    if (Gprocp(car_res)) {
-      return op_table[Gexp_unbox_proc(car_res)](gsp);
+    if (car_ret && Gprocp(car_ret)) {
+      gexp ret = op_table[Gexp_unbox_proc(car_ret)](gsp);
+      Gstack_push(&top_stack, ret);
+      return ret;
+
+    } else {
+      return car_ret;
     }
 
   } else if (Gvoidp(e)) {
@@ -249,10 +256,12 @@ gexp Geval(gexp e) {
     Gstack_push(&top_stack, e);
 
   } else if (Gsymbolp(e)) {
-
     Gstring gs = Gexp_unbox_symbol(e);
     gexp ret = Gdict_get(top_env, Gstrget(&gs));
-    return ret;
+    return Geval(ret);
+
+  } else if (Gprocp(e)) {
+    Gstack_push(&top_stack, e);
   }
 
   return e;
