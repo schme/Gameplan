@@ -14,7 +14,7 @@ struct Gdict
   void *data[DICT_MAX];
 };
 
-Gdict *Gdict_create();
+Gdict *Gdict_create(void);
 void Gdict_destroy(Gdict *d);
 void *Gdict_get(Gdict *d, const char *s);
 void Gdict_set(Gdict *d, const char *s, void* val);

@@ -11,7 +11,7 @@ static i32 get_hash(const char *s) {
   return hash_code % DICT_MAX;
 }
 
-Gdict *Gdict_create() {
+Gdict *Gdict_create(void) {
   Gdict *d = calloc(1, sizeof(Gdict));
   return d;
 }
