@@ -2,4 +2,5 @@ build/
 _zuo.db
 _zuo_tc.db
 
+*.[oa]
 .cache
