@@ -19,4 +19,8 @@ typedef double f64;
 
 typedef size_t size;
 
+
+typedef i64 fixnum;
+typedef f64 flonum;
+
 #endif

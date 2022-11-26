@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 /* sdbm hash */
-i32 get_hash(char *s) {
+static i32 get_hash(const char *s) {
   u32 hash_code = 0;
 
   for (i32 counter = 0; s[counter] != '\0'; counter++) {
@@ -11,11 +11,10 @@ i32 get_hash(char *s) {
   return hash_code % DICT_MAX;
 }
 
-Dictionary *create_dict() {
-  Dictionary *d = calloc(1, sizeof(Dictionary));
+Gdict *Gdict_create() {
+  Gdict *d = calloc(1, sizeof(Gdict));
   return d;
 }
-
-void destroy_dict(Dictionary *d) { free(d); }
-void *dict_get(Dictionary *d, char *s) { return d->data[get_hash(s)]; }
-void dict_set(Dictionary *d, char *s, void *val) { d->data[get_hash(s)] = val; }
+void Gdict_destroy(Gdict *d) { free(d); }
+void *Gdict_get(Gdict *d, const char *s) { return d->data[get_hash(s)]; }
+void Gdict_set(Gdict *d, const char *s, void *val) { d->data[get_hash(s)] = val; }

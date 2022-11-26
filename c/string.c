@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define MIN(a, b) (a < b ? a : b)
+
 static inline char *get_str(Gstring *str) {
   if (Gstring_smallp(str)) {
     return str->small;
@@ -76,3 +78,9 @@ void Gstring_append(Gstring *dst, const char *s, u32 len) {
   dst->len = end_size - 1;
   add_null(dst);
 }
+
+i32 Gstring_compare(Gstring *gs, const char *s) {
+  return strncmp(Gstring_get_str(gs), s, MIN(Gstring_length(gs), strlen(s)));
+}
+
+#undef MIN

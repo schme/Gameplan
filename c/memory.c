@@ -4,29 +4,47 @@
 #include <stdlib.h>
 
 /* len: size in gexp_structs */
-GHeap memory_create_heap(size_t len) {
-  GHeap heap;
+Gheap Gheap_create(size_t len) {
+  Gheap heap;
   heap.begin = calloc(len, sizeof(Gexp_struct));
   heap.next = heap.begin;
-  heap.allocated_size = len;
+  heap.size = len;
   return heap;
 }
 
 /* len: size in gexp_structs */
-GStack memory_create_stack(size_t len) {
-  GStack stack;
-  stack.bottom = calloc(len, sizeof(Gexp_struct));
+Gstack Gstack_create(size_t len) {
+  Gstack stack;
+  stack.bottom = calloc(len, sizeof(gexp));
   stack.top = stack.bottom;
-  stack.len = len;
+  stack.size = len;
   return stack;
 }
 
-gexp memory_get_next(GHeap *heap) {
-  assert(heap->next < heap->begin + heap->allocated_size && "Out of memory!");
+gexp Gheap_alloc(Gheap *heap) {
+  assert(heap->next < heap->begin + heap->size && "Out of memory!");
   gexp ret = heap->next++;
   return ret;
 }
 
-char *memory_string_alloc(size_t bytes) {
-  return malloc(bytes);
+void Gstack_push(Gstack *stack, gexp val)
+{
+  assert(stack->top < stack->bottom + stack->size && "Out of stack!");
+  *stack->top = val;
+  stack->top++;
+}
+
+gexp Gstack_pop(Gstack *stack) {
+  assert(stack->top > stack->bottom && "Popping an empty stack!");
+  gexp ret = *(--stack->top);
+  return ret;
+}
+
+gexp Gstack_peek(Gstack *stack) {
+  if (stack->top <= stack->bottom) return 0;
+  return *stack->top;
+}
+
+bool Gstack_empty(Gstack *stack) {
+  return stack->bottom == stack->top;
 }

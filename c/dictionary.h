@@ -7,16 +7,17 @@
 #define DICT_MAX 1000
 #endif
 
-typedef struct Dictionary
+typedef struct Gdict Gdict;
+struct Gdict
 {
-  void *data[DICT_MAX];
   u32 size;
-} Dictionary;
+  void *data[DICT_MAX];
+};
 
-Dictionary *create_dict();
-void destroy_dict(Dictionary *d);
-void *dict_get(Dictionary *d, char *s);
-void dict_set(Dictionary *d, char *s, void* val);
+Gdict *Gdict_create();
+void Gdict_destroy(Gdict *d);
+void *Gdict_get(Gdict *d, const char *s);
+void Gdict_set(Gdict *d, const char *s, void* val);
 
 #endif
 

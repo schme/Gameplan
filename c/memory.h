@@ -3,27 +3,30 @@
 
 #include "gameplan.h"
 
-typedef struct GStack GStack;
-struct GStack {
-  gexp bottom, top;
-  size_t len;
+typedef struct Gstack Gstack;
+struct Gstack {
+  gexp *bottom, *top;
+  size_t size; /* how many gexp pointers is the heap */
 };
 
-typedef struct GCallstack GCallstack;
-struct GCallstack {
-  GStack stack;
+typedef struct Gcallstack Gcallstack;
+struct Gcallstack {
+  Gstack stack;
 };
 
-typedef struct GHeap GHeap;
-struct GHeap {
+typedef struct Gheap Gheap;
+struct Gheap {
   gexp begin, next;
-  size_t allocated_size; /* how many gexp_structs is the heap overall */
+  size_t size; /* how many gexp_structs is the heap overall */
 };
 
-GHeap memory_create_heap(size_t len);
-GStack memory_create_stack(size_t len);
-gexp memory_get_next(GHeap *heap);
+Gheap Gheap_create(size_t len);
+gexp Gheap_alloc(Gheap *heap);
 
-char *memory_string_alloc(size_t bytes);
+Gstack Gstack_create(size_t len);
+void Gstack_push(Gstack *stack, gexp val);
+gexp Gstack_pop(Gstack *stack);
+gexp Gstack_peek(Gstack *stack);
+bool Gstack_empty(Gstack *stack);
 
 #endif
