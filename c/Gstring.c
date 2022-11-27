@@ -47,7 +47,7 @@ const char *Gstring_get_str(Gstring *s) {
   return s->s;
 }
 
-void Gstring_append(Gstring *dst, const char *s, u32 len) {
+void Gstring_append_len(Gstring *dst, const char *s, u32 len) {
   size_t end_size = dst->len + len + 1;
 
   bool is_small = Gstring_smallp(dst);

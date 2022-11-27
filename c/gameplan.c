@@ -1,15 +1,14 @@
 #include "gameplan.h"
 
-#include "common.h"
 #include "Gdict.h"
 #include "Gmem.h"
-#include "string.h"
+#include "Gstring.h"
+#include "common.h"
 
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #define GP_UNUSED(x) ((void)(x))
 #define ARRLEN(arr) (sizeof(arr) / sizeof(arr[0]))
@@ -164,7 +163,12 @@ gexp gp_parse(TokenStorage *tokens) {
   return exp;
 }
 
-gexp Gread(const char *program) { return gp_parse(gp_tokenize(program)); }
+gexp Gread(const char *program) {
+  TokenStorage *ts = gp_tokenize(program);
+  gexp ret = gp_parse(ts);
+  free(ts);
+  return ret;
+}
 
 gexp Gmul_op(gexp *stackptr) {
   flonum floval = 1;
@@ -269,14 +273,14 @@ Gstring gp_gexptostr(gexp e) {
         s = Gstrl("(", 1);
       }
       Gstring next = gp_gexptostr(car);
-      Gstrcat(&s, Gstrget(&next), Gstrlen(&next));
+      Gstrcatl(&s, Gstrget(&next), Gstrlen(&next));
       Gstrdstr(&next);
     }
 
     gexp cdr = e->val.pair.cdr;
     if (cdr) {
       Gstring next = gp_gexptostr(cdr);
-      Gstrcat(&s, Gstrget(&next), Gstrlen(&next));
+      Gstrcatl(&s, Gstrget(&next), Gstrlen(&next));
       Gstrdstr(&next);
     }
   } else if (Gvoidp(e)) {

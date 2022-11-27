@@ -27,7 +27,7 @@ TEST_CASE("Resize from small", "[Gstring]") {
   REQUIRE(str.size == 0);
 
   // Heap allocation
-  Gstring_append(&str, append_str, append_len);
+  Gstring_append_len(&str, append_str, append_len);
 
   REQUIRE_FALSE(Gstring_smallp(&str));
   REQUIRE(str.size == test_len + append_len + 1);
@@ -37,7 +37,7 @@ TEST_CASE("Resize from small", "[Gstring]") {
   size_t before_size = str.size;
   size_t before_len = str.len;
 
-  Gstring_append(&str, append_str, append_len);
+  Gstring_append_len(&str, append_str, append_len);
   REQUIRE(str.size == before_size * 2);
   REQUIRE(str.len == before_len + append_len);
 
@@ -54,7 +54,7 @@ TEST_CASE("Resize from !small", "[Gstring]") {
   REQUIRE(str.size == barely_not_fit_len + 1);
 
   // Heap allocation to fit if over double increase
-  Gstring_append(&str, append_str, append_len);
+  Gstring_append_len(&str, append_str, append_len);
 
   REQUIRE_FALSE(Gstring_smallp(&str));
   REQUIRE(str.size == barely_not_fit_len + append_len + 1);
@@ -64,7 +64,7 @@ TEST_CASE("Resize from !small", "[Gstring]") {
   size_t before_size = str.size;
   size_t before_len = str.len;
 
-  Gstring_append(&str, append_str, append_len);
+  Gstring_append_len(&str, append_str, append_len);
   REQUIRE(str.size == before_size * 2);
   REQUIRE(str.len == before_len + append_len);
 
@@ -81,7 +81,7 @@ TEST_CASE("smallp", "[Gstring]") {
   REQUIRE(Gstring_smallp(&small));
   REQUIRE_FALSE(Gstring_smallp(&not_small));
 
-  Gstring_append(&s, append_str, append_len);
+  Gstring_append_len(&s, append_str, append_len);
   REQUIRE_FALSE(Gstring_smallp(&s));
 
   Gstring_destroy(&s);
@@ -101,15 +101,15 @@ TEST_CASE("String content", "[Gstring]") {
   INFO(Gstring_get_str(&s));
 
   // stay small
-  Gstring_append(&s, first2, 3);
+  Gstring_append_len(&s, first2, 3);
   CHECK(strcmp(Gstring_get_str(&s), "1234 6") == 0);
   INFO(Gstring_get_str(&s));
 
-  Gstring_append(&s, second, 4);
+  Gstring_append_len(&s, second, 4);
   CHECK(strcmp(Gstring_get_str(&s), "1234 6 890") == 0);
   INFO(Gstring_get_str(&s));
 
-  Gstring_append(&s, third, 4);
+  Gstring_append_len(&s, third, 4);
   CHECK(strcmp(Gstring_get_str(&s), "1234 6 890ABCD") == 0);
   INFO(Gstring_get_str(&s));
 
