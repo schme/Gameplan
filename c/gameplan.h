@@ -1,7 +1,7 @@
 #ifndef GAMEPLAN_H_
 #define GAMEPLAN_H_
 
-#include "string.h"
+#include "Gstring.h"
 
 #include "types.h"
 

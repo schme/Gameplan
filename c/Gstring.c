@@ -1,7 +1,6 @@
-#include "string.h"
+#include "Gstring.h"
 
 #include <stdlib.h>
-#include <string.h>
 
 #define MIN(a, b) (a < b ? a : b)
 
@@ -20,7 +19,7 @@ static inline void add_null(Gstring *ss) {
 bool Gstring_smallp(Gstring *s) { return s->len < GSTRING_SMALL_SIZE; }
 u32 Gstring_length(Gstring *s) { return s->len; }
 
-Gstring Gstring_create(const char *s, u32 len) {
+Gstring Gstring_create_len(const char *s, u32 len) {
   Gstring ss = {0};
   /* We can use the local buffer */
   if (len < GSTRING_SMALL_SIZE) {

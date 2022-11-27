@@ -2,21 +2,22 @@
 
 (provide-targets targets-at)
 
+
 (define (targets-at at-dir [vars (hash)])
   (define gameplan (at-dir (.exe "gameplan")))
 
   (define gameplan.c (at-source "gameplan.c"))
   (define gameplan.h (at-source "gameplan.h"))
   (define gameplan.o (at-dir (.c->.o "gameplan")))
-  (define dictionary.c (at-source "dictionary.c"))
-  (define dictionary.h (at-source "dictionary.h"))
-  (define dictionary.o (at-dir (.c->.o "dictionary")))
-  (define memory.c (at-source "memory.c"))
-  (define memory.h (at-source "memory.h"))
-  (define memory.o (at-dir (.c->.o "memory")))
-  (define string.c (at-source "string.c"))
-  (define string.h (at-source "string.h"))
-  (define string.o (at-dir (.c->.o "string")))
+  (define Gdict.c (at-source "Gdict.c"))
+  (define Gdict.h (at-source "Gdict.h"))
+  (define Gdict.o (at-dir (.c->.o "Gdict")))
+  (define Gmem.c (at-source "Gmem.c"))
+  (define Gmem.h (at-source "Gmem.h"))
+  (define Gmem.o (at-dir (.c->.o "Gmem")))
+  (define Gstring.c (at-source "Gstring.c"))
+  (define Gstring.h (at-source "Gstring.h"))
+  (define Gstring.o (at-dir (.c->.o "Gstring")))
 
   (define config-in
 	(hash 'prefix "install"
@@ -32,21 +33,21 @@
   (define install-prefix (hash-ref config 'prefix))
 
   (make-targets
-	`([:target ,gameplan (,gameplan.o ,dictionary.o ,memory.o ,string.o)
+	`([:target ,gameplan (,gameplan.o ,Gdict.o ,Gmem.o ,Gstring.o)
 			   ,(lambda (dest token)
-				  (c-link dest (list gameplan.o dictionary.o memory.o string.o) config))]
+				  (c-link dest (list gameplan.o Gdict.o Gmem.o Gstring.o) config))]
 	  [:target ,gameplan.o (,gameplan.c ,gameplan.h)
 			   ,(lambda (dest token)
           (c-compile dest gameplan.c config))]
-	  [:target ,dictionary.o (,dictionary.c ,dictionary.h)
+	  [:target ,Gdict.o (,Gdict.c ,Gdict.h)
 			   ,(lambda (dest token)
-				  (c-compile dest dictionary.c config))]
-	  [:target ,memory.o (,memory.c ,memory.h)
+				  (c-compile dest Gdict.c config))]
+	  [:target ,Gmem.o (,Gmem.c ,Gmem.h)
 			   ,(lambda (dest token)
-				  (c-compile dest memory.c config))]
-	  [:target ,string.o (,string.c ,string.h)
+				  (c-compile dest Gmem.c config))]
+	  [:target ,Gstring.o (,Gstring.c ,Gstring.h)
 			   ,(lambda (dest token)
-				  (c-compile dest string.c config))]
+				  (c-compile dest Gstring.c config))]
 	  [:target clean ()
 			   ,(lambda (token)
-				  (for-each rm* (list gameplan.o dictionary.o memory.o string.o gameplan)))])))
+				  (for-each rm* (list gameplan.o Gdict.o Gmem.o Gstring.o gameplan)))])))

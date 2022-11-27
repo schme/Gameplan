@@ -1,8 +1,8 @@
 #include "gameplan.h"
 
 #include "common.h"
-#include "dictionary.h"
-#include "memory.h"
+#include "Gdict.h"
+#include "Gmem.h"
 #include "string.h"
 
 #include <assert.h>
@@ -105,7 +105,7 @@ gexp gp_build_atom(const char *token) {
     return atom;
 
   /* symbol */
-  Gexp_symbol(atom, Gstr(token, token_length));
+  Gexp_symbol(atom, Gstrl(token, token_length));
 
   return atom;
 }
@@ -132,15 +132,6 @@ gexp gp_parse_expr(TokenView *tokens) {
     current = Gheap_alloc(&top_heap);
     if (token[0] == ')') {
       Gexp_void(current);
-
-      if (!prev) {
-        gexp_error("Syntax error!: ')'");
-        return 0;
-      }
-
-      assert(Gpairp(prev));
-      gexp prev_car = Gexp_car(prev);
-      prev_car = current;
       return start;
 
     } else if (token[0] == '(') {
@@ -275,7 +266,7 @@ Gstring gp_gexptostr(gexp e) {
     gexp car = e->val.pair.car;
     if (car) {
       if (!Gatomp(car)) {
-        s = Gstr("(", 1);
+        s = Gstrl("(", 1);
       }
       Gstring next = gp_gexptostr(car);
       Gstrcat(&s, Gstrget(&next), Gstrlen(&next));
@@ -289,21 +280,21 @@ Gstring gp_gexptostr(gexp e) {
       Gstrdstr(&next);
     }
   } else if (Gvoidp(e)) {
-    s = Gstr(")", 1);
+    s = Gstrl(")", 1);
 
   } else if (Gfixnump(e)) {
     char buf[GSTR_NUM_BUFSIZE];
     snprintf(buf, GSTR_NUM_BUFSIZE, "%ld", e->val.fixnum);
-    s = Gstr(buf, strlen(buf));
+    s = Gstrl(buf, strlen(buf));
 
   } else if (Gflonump(e)) {
     char buf[GSTR_NUM_BUFSIZE];
     snprintf(buf, GSTR_NUM_BUFSIZE, "%g", e->val.flonum);
-    s = Gstr(buf, strlen(buf));
+    s = Gstrl(buf, strlen(buf));
 
   } else {
     /* symbol */
-    s = Gstr(Gstrget(&e->val.symbol), Gstrlen(&e->val.symbol));
+    s = Gstrl(Gstrget(&e->val.symbol), Gstrlen(&e->val.symbol));
   }
 
   return s;
@@ -314,7 +305,7 @@ Gstring gp_read_and_eval(const char *program) {
 
   gexp ast = Gread(program);
   if (!ast)
-    return Gstr("Error!", 6);
+    return Gstrl("Error!", 6);
 
   gexp ret = Geval(ast);
   return gp_gexptostr(ret);

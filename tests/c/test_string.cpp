@@ -2,7 +2,7 @@
 
 #include <catch2/catch.hpp>
 
-#include "../../c/string.h"
+#include "../../c/Gstring.h"
 
 const char *test_str = "Test!";
 const char *append_str = " Hello again from the test!";
@@ -11,6 +11,7 @@ size_t append_len = strlen(append_str);
 
 static_assert(GSTRING_SMALL_SIZE == 7,
               "GSTRING_SMALL_SIZE different from expected");
+
 const char *barely_fit_str = "123456";
 const char *barely_not_fit_str = "1234567";
 size_t barely_fit_len = strlen(barely_fit_str);
@@ -18,7 +19,7 @@ size_t barely_not_fit_len = strlen(barely_not_fit_str);
 
 
 TEST_CASE("Resize from small", "[Gstring]") {
-  Gstring str = Gstring_create(test_str, test_len);
+  Gstring str = Gstring_create_len(test_str, test_len);
 
   // Small array when fits
   REQUIRE(Gstring_smallp(&str));
@@ -45,7 +46,7 @@ TEST_CASE("Resize from small", "[Gstring]") {
 
 
 TEST_CASE("Resize from !small", "[Gstring]") {
-  Gstring str = Gstring_create(barely_not_fit_str, barely_not_fit_len);
+  Gstring str = Gstring_create_len(barely_not_fit_str, barely_not_fit_len);
 
   // Big when string doesn't fit
   REQUIRE_FALSE(Gstring_smallp(&str));
@@ -72,9 +73,9 @@ TEST_CASE("Resize from !small", "[Gstring]") {
 
 
 TEST_CASE("smallp", "[Gstring]") {
-  Gstring s = Gstring_create(test_str, test_len);
-  Gstring small = Gstring_create(barely_fit_str, barely_fit_len);
-  Gstring not_small = Gstring_create(barely_not_fit_str, barely_not_fit_len);
+  Gstring s = Gstring_create_len(test_str, test_len);
+  Gstring small = Gstring_create_len(barely_fit_str, barely_fit_len);
+  Gstring not_small = Gstring_create_len(barely_not_fit_str, barely_not_fit_len);
 
   REQUIRE(Gstring_smallp(&s));
   REQUIRE(Gstring_smallp(&small));
@@ -95,7 +96,7 @@ TEST_CASE("String content", "[Gstring]") {
   const char *second = " 890";
   const char *third = "ABCD F";
 
-  Gstring s = Gstring_create(first, 3);
+  Gstring s = Gstring_create_len(first, 3);
   CHECK(strcmp(Gstring_get_str(&s), "123") == 0);
   INFO(Gstring_get_str(&s));
 
@@ -121,9 +122,9 @@ TEST_CASE("Copying", "[Gstring]") {
   Gstring gs;
   {
     const char *test_str = "Herr gott mine lord!";
-    Gstring s = Gstring_create(test_str, strlen(test_str));
+    Gstring s = Gstring_create_len(test_str, strlen(test_str));
     gb = s;
-    gs = Gstring_create("Hi", 2);
+    gs = Gstring_create_len("Hi", 2);
   }
 
   CHECK(strcmp(Gstring_get_str(&gb), "Herr gott mine lord!") == 0);

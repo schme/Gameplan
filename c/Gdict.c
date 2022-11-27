@@ -1,4 +1,4 @@
-#include "dictionary.h"
+#include "Gdict.h"
 #include <stdlib.h>
 
 /* sdbm hash */

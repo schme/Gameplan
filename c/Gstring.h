@@ -4,6 +4,7 @@
 #include "types.h"
 
 #include <stdbool.h>
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,9 +45,17 @@ struct Gstring {
  * @param len Length of the string, excluding null terminator.
  * @return New Gstring struct with the initial values set.
  */
-Gstring Gstring_create(const char *s, u32 len);
+Gstring Gstring_create_len(const char *s, u32 len);
 /**
- * Set everything to zero. If needed, deallocate.
+ * Create a string from a null terminated C-string
+ */
+inline Gstring Gstring_create(const char *s)
+{
+  return Gstring_create_len(s, strlen(s));
+}
+/**
+ * Set everything to zero. If needed, deallocate. Should be called for every
+ * Gstring created.
  */
 void Gstring_destroy(Gstring *s);
 /**
@@ -75,7 +84,8 @@ i32 Gstring_compare(Gstring *gs, const char *s);
 
 #if GSTRING_SHORT_NAMES
 /* Function shortening wrapper */
-static inline Gstring Gstr(const char *s, u32 len) {return Gstring_create(s, len);}
+static inline Gstring Gstr(const char *s) {return Gstring_create(s);}
+static inline Gstring Gstrl(const char *s, u32 len) {return Gstring_create_len(s, len);}
 static inline void Gstrdstr(Gstring *s) {Gstring_destroy(s);}
 static inline const char* Gstrget(Gstring *s) {return Gstring_get_str(s);}
 static inline bool Gstrsmall(Gstring *s) {return Gstring_smallp(s);}

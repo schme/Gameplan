@@ -11,8 +11,8 @@
   (define test_string.cpp (at-source "test_string.cpp"))
   (define test_string.o (at-dir (.c->.o "test_string")))
 
-  (define string.c (at-source "../../c/string.c"))
-  (define string.o (at-dir (.c->.o "string")))
+  (define Gstring.c (at-source "../../c/Gstring.c"))
+  (define Gstring.o (at-dir (.c->.o "Gstring")))
 
   (define config-in-cpp
     (hash 'CC "clang++"
@@ -31,18 +31,18 @@
                         (hash-keys vars)))
 
   (make-targets
-    `([:target ,run_tests (,test_main.o ,test_string.o ,string.o)
+    `([:target ,run_tests (,test_main.o ,test_string.o ,Gstring.o)
                ,(lambda (dest token)
-                  (c-link dest (list test_main.o test_string.o string.o) config-cpp))]
+                  (c-link dest (list test_main.o test_string.o Gstring.o) config-cpp))]
       [:target ,test_main.o (,test_main.cpp)
                ,(lambda (dest token)
                   (c-compile dest test_main.cpp config-cpp))]
-      [:target ,test_string.o (,test_string.cpp ,string.o)
+      [:target ,test_string.o (,test_string.cpp ,Gstring.o)
                ,(lambda (dest token)
                   (c-compile dest test_string.cpp config-cpp))]
-      [:target ,string.o (,string.c)
+      [:target ,Gstring.o (,Gstring.c)
                ,(lambda (dest token)
-                  (c-compile dest string.c config-c))]
+                  (c-compile dest Gstring.c config-c))]
       [:target clean ()
                ,(lambda (token)
-                  (for-each rm* (list test_main.o test_string.o string.o run_tests)))])))
+                  (for-each rm* (list test_main.o test_string.o Gstring.o run_tests)))])))
