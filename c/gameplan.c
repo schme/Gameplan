@@ -6,6 +6,7 @@
 #include "common.h"
 
 #include <assert.h>
+#include <ctype.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,41 +35,30 @@ static Gheap top_heap;
 static Gstack top_stack;
 static Gdict *top_env;
 
-typedef struct {
-  size_t len;
-  char *tokens[];
-} TokenStorage;
+typedef Gstring_slice Token;
 
-typedef struct {
-  size_t len;
-  char **tokens;
-} TokenView;
-
-static inline TokenView make_token_view(TokenStorage *tokens) {
-  return (TokenView){tokens->len, tokens->tokens};
-}
-static inline const char *token_get(const TokenView *tokens) {
-  return tokens->tokens[0];
-}
-static inline const char *token_pop(TokenView *tokens) {
-  if (tokens->len == 0) {
-    return 0;
-  }
-  const char *next = token_get(tokens);
-  tokens->len--;
-  tokens->tokens++;
-  return next;
+static inline bool isparen(char c) {
+  return c == '(' || c == ')' || c == '[' || c == ']';
 }
 
-TokenStorage *gp_tokenize(const char *program) {
-  GP_UNUSED(program);
+static inline bool isterm(char c) { return c == '\0'; }
 
-  TokenStorage *tokens = malloc(sizeof(TokenStorage) + sizeof(char *) * 9);
-  tokens->len = 9;
-  char *tokes[9] = {"(", "*", "pi", "(", "*", "5", "5.000000000", ")", ")"};
+static inline Gstring_slice get_token(const char *str) {
+  const char *p = str;
 
-  memcpy(tokens->tokens, tokes, tokens->len * sizeof(char *));
-  return tokens;
+  if (isterm(*p))
+    return (Gstring_slice){0};
+
+  if (isparen(*p))
+    return (Gstring_slice){.start = p, .end = p + 1};
+
+  while (!isterm(*p) && isspace(*p))
+    p++;
+  const char *start = p++;
+  while (!isterm(*p) && !isparen(*p) && !isspace(*p))
+    p++;
+
+  return (Gstring_slice){.start = start, .end = p};
 }
 
 static inline bool gp_parse_fixval(const char *token, int token_length,
@@ -93,48 +83,50 @@ static inline bool gp_parse_flonum(const char *token, int token_length,
   return false;
 }
 
-gexp gp_build_atom(const char *token) {
+gexp gp_build_atom(Token token) {
   gexp atom = Gheap_alloc(&top_heap);
-  int token_length = strlen(token);
+  int token_length = Gsslice_length(token);
 
-  if (gp_parse_fixval(token, token_length, atom))
+  if (gp_parse_fixval(token.start, token_length, atom))
     return atom;
 
-  if (gp_parse_flonum(token, token_length, atom))
+  if (gp_parse_flonum(token.start, token_length, atom))
     return atom;
 
   /* symbol */
-  Gexp_symbol(atom, Gstrl(token, token_length));
+  Gexp_symbol(atom, Gsslice_gstring(token));
 
   return atom;
 }
 
-gexp gp_parse_expr(TokenView *tokens) {
+gexp gp_parse_expr(const char *str, const char **endp) {
   gexp start = 0;
   gexp current = 0;
   gexp prev = 0;
 
-  if (tokens->len <= 0)
+  if (!str || *str == '\0')
     return 0;
 
   do {
+    Token token = get_token(str);
+    str = token.end;
 
-#ifdef DEBUG_VERBOSE
-    for (size_t i = 0; i < tokens->len; ++i) {
-      printf("%s ", tokens->tokens[i]);
-    }
-    printf("\n");
+#if DEBUG_VERBOSE
+    Gstring s = Gsslice_gstring(token);
+    TRACE_PRINT("'%s'", Gstrget(&s));
+    Gstrdstr(&s);
 #endif
 
-    const char *token = token_pop(tokens);
-
     current = Gheap_alloc(&top_heap);
-    if (token[0] == ')') {
+    if (token.start[0] == ')') {
       Gexp_void(current);
+      *endp = str;
       return start;
 
-    } else if (token[0] == '(') {
-      Gexp_pair(current, gp_parse_expr(tokens), 0);
+    } else if (token.start[0] == '(') {
+      const char *end = str;
+      Gexp_pair(current, gp_parse_expr(str, &end), 0);
+      str = end;
 
     } else {
       /* atom */
@@ -151,22 +143,21 @@ gexp gp_parse_expr(TokenView *tokens) {
     prev = current;
     current = 0;
 
-  } while (tokens->len > 0);
+  } while (*str != '\0');
 
+  *endp = str;
   return start;
 }
 
-gexp gp_parse(TokenStorage *tokens) {
-  TokenView tk = make_token_view(tokens);
-  gexp exp = gp_parse_expr(&tk);
+gexp gp_parse(const char *program) {
 
+  const char *last = program;
+  gexp exp = gp_parse_expr(program, &last);
   return exp;
 }
 
 gexp Gread(const char *program) {
-  TokenStorage *ts = gp_tokenize(program);
-  gexp ret = gp_parse(ts);
-  free(ts);
+  gexp ret = gp_parse(program);
   return ret;
 }
 
@@ -309,7 +300,7 @@ Gstring gp_read_and_eval(const char *program) {
 
   gexp ast = Gread(program);
   if (!ast)
-    return Gstrl("Error!", 6);
+    return Gstr("Error!");
 
   gexp ret = Geval(ast);
   return gp_gexptostr(ret);
@@ -322,7 +313,7 @@ int main(int argc, char *argv[static argc + 1]) {
   const char *program = "(begin (define r 10.23) (* pi (* r r)))";
   GP_UNUSED(program);
 
-  const char *small_program = "(* 5 5))";
+  const char *small_program = "(* pi ( * 5 5.000))";
   const char *input = small_program;
 
   top_heap = Gheap_create(1024);

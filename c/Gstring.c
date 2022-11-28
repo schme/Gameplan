@@ -2,7 +2,7 @@
 
 #include <stdlib.h>
 
-#define MIN(a, b) (a < b ? a : b)
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 static inline char *get_str(Gstring *str) {
   if (Gstring_smallp(str)) {
@@ -21,6 +21,9 @@ u32 Gstring_length(Gstring *s) { return s->len; }
 
 Gstring Gstring_create_len(const char *s, u32 len) {
   Gstring ss = {0};
+  if (s == 0)
+    return ss;
+
   /* We can use the local buffer */
   if (len < GSTRING_SMALL_SIZE) {
     strncpy(ss.small, s, GSTRING_SMALL_SIZE); /* this inserts a null byte */

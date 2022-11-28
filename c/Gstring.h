@@ -46,6 +46,7 @@ struct Gstring {
  * @return New Gstring struct with the initial values set.
  */
 Gstring Gstring_create_len(const char *s, u32 len);
+
 /**
  * Create a string from a null terminated C-string
  */
@@ -53,35 +54,42 @@ static inline Gstring Gstring_create(const char *s)
 {
   return Gstring_create_len(s, strlen(s));
 }
+
 /**
  * Set everything to zero. If needed, deallocate. Should be called for every
  * Gstring created.
  */
 void Gstring_destroy(Gstring *gs);
+
 /**
  * Get the underlying string buffer
  */
 const char *Gstring_get_str(Gstring *gs);
+
 /**
  * If the Gstring fits into the small buffer
  */
 bool Gstring_smallp(Gstring *gs);
+
 /**
  * Append char buffer of length len (non-null terminated) to Gstring.
  *
  * Allocates or reallocates if required.
  */
 void Gstring_append_len(Gstring *gs, const char *s, u32 len);
+
 /**
  * Append null terminated c-string
  */
 static inline void Gstring_append(Gstring *gs, const char *s) {
   Gstring_append_len(gs, s, strlen(s));
 }
+
 /**
  * Length of the string (without null terminator)
  */
 u32 Gstring_length(Gstring *gs);
+
 /**
  * Lexical comparison with a C-string
  */
@@ -100,6 +108,28 @@ static inline void Gstrcat(Gstring *gs, const char *s) {Gstring_append(gs, s);}
 static inline u32 Gstrlen(Gstring *gs) {return Gstring_length(gs);}
 static inline i32 Gstrcmp(Gstring *gs, const char *s) {return Gstring_compare(gs,s);}
 #endif
+
+
+
+typedef struct Gstring_slice Gstring_slice;
+struct Gstring_slice {
+  const char *start, *end;
+};
+
+static inline bool Gsslice_nullp(Gstring_slice ss) {
+  return ss.start == ss.end;
+}
+static inline size_t Gsslice_length(Gstring_slice ss) {
+  return ss.end - ss.start;
+}
+static inline Gstring Gsslice_gstring(Gstring_slice ss) {
+  return Gstring_create_len(ss.start, Gsslice_length(ss));
+}
+static inline int Gsslice_strncmp(Gstring_slice ss, const char *s) {
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+  return strncmp(ss.start, s, MIN(Gsslice_length(ss), strlen(s)));
+#undef MIN
+}
 
 
 #ifdef __cplusplus
