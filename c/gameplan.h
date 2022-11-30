@@ -9,9 +9,12 @@ typedef struct Gexp_struct *gexp;
 
 typedef enum Gopcode
 {
+  GEXP_OP_IF,
+  GEXP_OP_DEFINE,
   GEXP_OP_PLUS,
   GEXP_OP_MINUS,
   GEXP_OP_MUL,
+  GEXP_OP_DIV,
   GEXP_OP_COUNT,
 } Gopcode;
 
@@ -37,7 +40,7 @@ typedef struct Gexp_struct {
   } val;
 } Gexp_struct;
 
-_Static_assert(sizeof(Gexp_struct) <= 32, "gexp_struct size over a limit!");
+_Static_assert(sizeof(Gexp_struct) == 32, "gexp_struct size changed!");
 
 static inline gexp Gexp_flonum(gexp e, flonum val) {
   e->tag = GEXP_TYPE_FLONUM;

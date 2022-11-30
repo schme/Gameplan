@@ -21,13 +21,17 @@
 static inline void gexp_error(const char *msg) { fprintf(stderr, "%s\n", msg); }
 Gstring gp_gexptostr(gexp e);
 
-static gexp Gmul_op(gexp *gsp);
+static gexp Gop_if(gexp *gsp);
+static gexp Gop_mul(gexp *gsp);
 
 typedef gexp (*Gfunction)(gexp *gsp);
 static Gfunction op_table[GEXP_OP_COUNT] = {
-    0,
-    0,
-    &Gmul_op,
+    &Gop_if,  // if
+    0,        // define
+    0,        // plus
+    0,        // minus
+    &Gop_mul, // mul
+    0,        // div
 };
 
 /* For now, one global environment for everything */
@@ -111,7 +115,7 @@ gexp gp_parse_expr(const char *str, const char **endp) {
     Token token = get_token(str);
     str = token.end;
 
-#if DEBUG_VERBOSE
+#if 0
     Gstring s = Gsslice_gstring(token);
     TRACE_PRINT("'%s'", Gstrget(&s));
     Gstrdstr(&s);
@@ -149,19 +153,17 @@ gexp gp_parse_expr(const char *str, const char **endp) {
   return start;
 }
 
-gexp gp_parse(const char *program) {
-
-  const char *last = program;
-  gexp exp = gp_parse_expr(program, &last);
-  return exp;
-}
-
 gexp Gread(const char *program) {
-  gexp ret = gp_parse(program);
+  const char *last = program;
+  gexp ret = gp_parse_expr(program, &last);
   return ret;
 }
 
-gexp Gmul_op(gexp *stackptr) {
+gexp Gop_if(gexp *stackptr) {
+
+}
+
+gexp Gop_mul(gexp *stackptr) {
   flonum floval = 1;
   fixnum fixval = 1;
   bool decay_to_flonum = false;
@@ -228,7 +230,6 @@ gexp Geval(gexp e) {
 
     if (car_ret && Gprocp(car_ret)) {
       gexp ret = op_table[Gexp_unbox_proc(car_ret)](gsp);
-      Gstack_push(&top_stack, ret);
       return ret;
 
     } else {
@@ -256,6 +257,9 @@ gexp Geval(gexp e) {
 Gstring gp_gexptostr(gexp e) {
 #define GSTR_NUM_BUFSIZE 21
   Gstring s = {0};
+
+  if (!e)
+    return (Gstring){0};
 
   if (Gpairp(e)) {
     gexp car = e->val.pair.car;
@@ -296,25 +300,32 @@ Gstring gp_gexptostr(gexp e) {
 #undef GSTR_NUM_BUFSIZE
 }
 
-Gstring gp_read_and_eval(const char *program) {
+Gstring gp_read_and_eval(const char *expr) {
 
-  gexp ast = Gread(program);
+  gexp ast = Gread(expr);
   if (!ast)
     return Gstr("Error!");
 
+  printf("%s\n", "----- eval -----");
   gexp ret = Geval(ast);
+  printf("%s\n", "----- /eval -----");
   return gp_gexptostr(ret);
+}
+
+void gp_read_print_eval(const char *prompt) {
+  char buf[256];
+  printf("%s", prompt);
+  while (fgets(buf, sizeof buf, stdin)) {
+
+    Gstring ret = gp_read_and_eval(buf);
+    printf("%s\n", Gstrget(&ret));
+    printf("%s", prompt);
+  }
 }
 
 int main(int argc, char *argv[static argc + 1]) {
   GP_UNUSED(argc);
   GP_UNUSED(argv);
-
-  const char *program = "(begin (define r 10.23) (* pi (* r r)))";
-  GP_UNUSED(program);
-
-  const char *small_program = "(* pi ( * 5 5.000))";
-  const char *input = small_program;
 
   top_heap = Gheap_create(1024);
   top_stack = Gstack_create(128);
@@ -328,7 +339,11 @@ int main(int argc, char *argv[static argc + 1]) {
   Gexp_proc(e, GEXP_OP_MUL);
   Gdict_set(top_env, "*", e);
 
-  Gstring ret = gp_read_and_eval(input);
-  printf("%s\n", Gstrget(&ret));
+  e = Gheap_alloc(&top_heap);
+  Gexp_proc(e, GEXP_OP_IF);
+  Gdict_set(top_env, "if", e);
+
+  gp_read_print_eval("gp> ");
+
   return 0;
 }
