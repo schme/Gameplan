@@ -34,10 +34,15 @@ static Gfunction op_table[GEXP_OP_COUNT] = {
     0,        // div
 };
 
-/* For now, one global environment for everything */
+/* One global environment for everything */
 static Gheap top_heap;
 static Gstack top_stack;
 static Gdict *top_env;
+
+#define Galloc() (Gheap_alloc(&top_heap))
+#define Gpush(v) (Gstack_push(&top_stack, (v)))
+#define Gpop() (Gstack_pop(&top_stack))
+#define Gpeek() (Gstack_peek(&top_stack))
 
 typedef Gstring_slice Token;
 
@@ -88,7 +93,7 @@ static inline bool gp_parse_flonum(const char *token, int token_length,
 }
 
 gexp gp_build_atom(Token token) {
-  gexp atom = Gheap_alloc(&top_heap);
+  gexp atom = Galloc();
   int token_length = Gsslice_length(token);
 
   if (gp_parse_fixval(token.start, token_length, atom))
@@ -121,7 +126,7 @@ gexp gp_parse_expr(const char *str, const char **endp) {
     Gstrdstr(&s);
 #endif
 
-    current = Gheap_alloc(&top_heap);
+    current = Galloc();
     if (token.start[0] == ')') {
       Gexp_void(current);
       *endp = str;
@@ -160,7 +165,8 @@ gexp Gread(const char *program) {
 }
 
 gexp Gop_if(gexp *stackptr) {
-
+  GP_UNUSED(stackptr);
+  return 0;
 }
 
 gexp Gop_mul(gexp *stackptr) {
@@ -169,7 +175,7 @@ gexp Gop_mul(gexp *stackptr) {
   bool decay_to_flonum = false;
   gexp n = 0;
   /* Unwind stack until we hit the proc itself, pop it and write result */
-  while ((n = Gstack_pop(&top_stack)) != *stackptr) {
+  while ((n = Gpop()) != *stackptr) {
     assert(!Gstack_empty(&top_stack));
 
     /* Here we do a sort of exact-inexact decay, where if there is any flonum,
@@ -187,11 +193,11 @@ gexp Gop_mul(gexp *stackptr) {
       }
       floval *= Gexp_unbox_flonum(n);
     } else {
-      gexp_error("Gmul_op: Syntax error!");
+      gexp_error("*: Syntax error!");
     }
   }
 
-  gexp ret = Gheap_alloc(&top_heap);
+  gexp ret = Galloc();
   return decay_to_flonum ? Gexp_flonum(ret, floval) : Gexp_fixnum(ret, fixval);
 }
 
@@ -206,7 +212,7 @@ static void debug_print_stack(Gstack *stack) {
 }
 
 gexp Geval(gexp e) {
-#ifdef DEBUG_VERBOSE
+#if DEBUG_VERBOSE
   debug_print_stack(&top_stack);
 #endif
   if (!e) {
@@ -240,7 +246,7 @@ gexp Geval(gexp e) {
     return 0;
 
   } else if (Gnumberp(e)) {
-    Gstack_push(&top_stack, e);
+    Gpush(e);
 
   } else if (Gsymbolp(e)) {
     Gstring gs = Gexp_unbox_symbol(e);
@@ -248,7 +254,7 @@ gexp Geval(gexp e) {
     return Geval(ret);
 
   } else if (Gprocp(e)) {
-    Gstack_push(&top_stack, e);
+    Gpush(e);
   }
 
   return e;
@@ -306,17 +312,16 @@ Gstring gp_read_and_eval(const char *expr) {
   if (!ast)
     return Gstr("Error!");
 
-  printf("%s\n", "----- eval -----");
   gexp ret = Geval(ast);
-  printf("%s\n", "----- /eval -----");
   return gp_gexptostr(ret);
 }
 
 void gp_read_print_eval(const char *prompt) {
   char buf[256];
-  printf("%s", prompt);
+  printf("\n%s", prompt);
   while (fgets(buf, sizeof buf, stdin)) {
 
+    if (buf[0] == '\n') continue;
     Gstring ret = gp_read_and_eval(buf);
     printf("%s\n", Gstrget(&ret));
     printf("%s", prompt);
@@ -327,19 +332,19 @@ int main(int argc, char *argv[static argc + 1]) {
   GP_UNUSED(argc);
   GP_UNUSED(argv);
 
-  top_heap = Gheap_create(1024);
+  top_heap = Gheap_create(128);
   top_stack = Gstack_create(128);
   top_env = Gdict_create();
 
-  gexp e = Gheap_alloc(&top_heap);
+  gexp e = Galloc();
   Gexp_flonum(e, M_PI);
   Gdict_set(top_env, "pi", e);
 
-  e = Gheap_alloc(&top_heap);
+  e = Galloc();
   Gexp_proc(e, GEXP_OP_MUL);
   Gdict_set(top_env, "*", e);
 
-  e = Gheap_alloc(&top_heap);
+  e = Galloc();
   Gexp_proc(e, GEXP_OP_IF);
   Gdict_set(top_env, "if", e);
 

@@ -90,6 +90,6 @@ static inline _Bool Gnumberp(gexp e) { return Gfixnump(e) || Gflonump(e); }
 static inline _Bool Gsymbolp(gexp e) { return e->tag == GEXP_TYPE_SYMBOL; }
 static inline _Bool Gprocp(gexp e) { return e->tag == GEXP_TYPE_PROCEDURE; }
 
-#define DEBUG_VERBOSE 1
+#define DEBUG_VERBOSE 0
 #define TRACE_ENABLE 1
 #endif
