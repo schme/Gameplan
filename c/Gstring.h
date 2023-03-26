@@ -76,13 +76,20 @@ bool Gstring_smallp(Gstring *gs);
  *
  * Allocates or reallocates if required.
  */
-void Gstring_append_len(Gstring *gs, const char *s, u32 len);
+void Gstring_concat_len(Gstring *gs, const char *s, u32 len);
 
 /**
- * Append null terminated c-string
+ * Concat a null terminated c-string
  */
-static inline void Gstring_append(Gstring *gs, const char *s) {
-  Gstring_append_len(gs, s, strlen(s));
+static inline void Gstring_concat(Gstring *gs, const char *s) {
+  Gstring_concat_len(gs, s, strlen(s));
+}
+
+/**
+ * Append a gstring onto another gstring
+ */
+static inline void Gstring_append(Gstring *gs, Gstring *other) {
+  Gstring_concat_len(gs, Gstring_get_str(other), other->len);
 }
 
 /**
@@ -103,13 +110,19 @@ static inline Gstring Gstrl(const char *s, u32 len) {return Gstring_create_len(s
 static inline void Gstrdstr(Gstring *gs) {Gstring_destroy(gs);}
 static inline const char* Gstrget(Gstring *gs) {return Gstring_get_str(gs);}
 static inline bool Gstrsmall(Gstring *gs) {return Gstring_smallp(gs);}
-static inline void Gstrcatl(Gstring *gs, const char *s, u32 len) {Gstring_append_len(gs, s, len);}
-static inline void Gstrcat(Gstring *gs, const char *s) {Gstring_append(gs, s);}
+static inline void Gstrcatl(Gstring *gs, const char *s, u32 len) {Gstring_concat_len(gs, s, len);}
+static inline void Gstrcat(Gstring *gs, const char *s) {Gstring_concat(gs, s);}
+static inline void Gstrapp(Gstring *gs, Gstring *other) {Gstring_append(gs, other);}
 static inline u32 Gstrlen(Gstring *gs) {return Gstring_length(gs);}
 static inline i32 Gstrcmp(Gstring *gs, const char *s) {return Gstring_compare(gs,s);}
 #endif
 
 
+/**
+ * Gstring_slice
+ *
+ * A cheap non-allocating string viewer
+ */
 
 typedef struct Gstring_slice Gstring_slice;
 struct Gstring_slice {

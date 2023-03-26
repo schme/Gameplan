@@ -3,7 +3,6 @@
 #include "Gdict.h"
 #include "Gmem.h"
 #include "Gstring.h"
-#include "common.h"
 
 #include <assert.h>
 #include <ctype.h>
@@ -18,8 +17,12 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-static inline void gexp_error(const char *msg) { fprintf(stderr, "%s\n", msg); }
-Gstring gp_gexptostr(gexp e);
+gexp obj_true;
+gexp obj_false;
+gexp obj_null;
+
+static inline void Gerror(const char *msg) { fprintf(stderr, "%s\n", msg); }
+Gstring Gwrite(gexp e);
 
 static gexp Gop_if(gexp *gsp);
 static gexp Gop_mul(gexp *gsp);
@@ -52,14 +55,14 @@ static inline bool isparen(char c) {
 
 static inline bool isterm(char c) { return c == '\0'; }
 
-static inline Gstring_slice get_token(const char *str) {
+static inline Token get_token(const char *str) {
   const char *p = str;
 
   if (isterm(*p))
-    return (Gstring_slice){0};
+    return (Token){0};
 
   if (isparen(*p))
-    return (Gstring_slice){.start = p, .end = p + 1};
+    return (Token){.start = p, .end = p + 1};
 
   while (!isterm(*p) && isspace(*p))
     p++;
@@ -67,7 +70,7 @@ static inline Gstring_slice get_token(const char *str) {
   while (!isterm(*p) && !isparen(*p) && !isspace(*p))
     p++;
 
-  return (Gstring_slice){.start = start, .end = p};
+  return (Token){.start = start, .end = p};
 }
 
 static inline bool gp_parse_fixval(const char *token, int token_length,
@@ -108,7 +111,7 @@ gexp gp_build_atom(Token token) {
   return atom;
 }
 
-gexp gp_parse_expr(const char *str, const char **endp) {
+gexp Gread_expr(const char *str, const char **endp) {
   gexp start = 0;
   gexp current = 0;
   gexp prev = 0;
@@ -120,21 +123,15 @@ gexp gp_parse_expr(const char *str, const char **endp) {
     Token token = get_token(str);
     str = token.end;
 
-#if 0
-    Gstring s = Gsslice_gstring(token);
-    TRACE_PRINT("'%s'", Gstrget(&s));
-    Gstrdstr(&s);
-#endif
-
     current = Galloc();
     if (token.start[0] == ')') {
-      Gexp_void(current);
+      Gexp_null(current);
       *endp = str;
       return start;
 
     } else if (token.start[0] == '(') {
       const char *end = str;
-      Gexp_pair(current, gp_parse_expr(str, &end), 0);
+      Gexp_pair(current, Gread_expr(str, &end), 0);
       str = end;
 
     } else {
@@ -160,7 +157,7 @@ gexp gp_parse_expr(const char *str, const char **endp) {
 
 gexp Gread(const char *program) {
   const char *last = program;
-  gexp ret = gp_parse_expr(program, &last);
+  gexp ret = Gread_expr(program, &last);
   return ret;
 }
 
@@ -174,6 +171,7 @@ gexp Gop_mul(gexp *stackptr) {
   fixnum fixval = 1;
   bool decay_to_flonum = false;
   gexp n = 0;
+
   /* Unwind stack until we hit the proc itself, pop it and write result */
   while ((n = Gpop()) != *stackptr) {
     assert(!Gstack_empty(&top_stack));
@@ -181,7 +179,7 @@ gexp Gop_mul(gexp *stackptr) {
     /* Here we do a sort of exact-inexact decay, where if there is any flonum,
      * the value will become flonum (inexact) */
     if (Gfixnump(n)) {
-      fixnum val = Gexp_unbox_fixnum(n);
+      fixnum val = Gfixnum(n);
       if (decay_to_flonum)
         floval *= val;
       else
@@ -191,9 +189,9 @@ gexp Gop_mul(gexp *stackptr) {
         decay_to_flonum = true;
         floval = fixval;
       }
-      floval *= Gexp_unbox_flonum(n);
+      floval *= Gflonum(n);
     } else {
-      gexp_error("*: Syntax error!");
+      Gerror("*: Syntax error!");
     }
   }
 
@@ -205,7 +203,7 @@ static void debug_print_stack(Gstack *stack) {
   gexp *bottom = stack->bottom;
   gexp *top = stack->top;
   while (bottom != top) {
-    Gstring e = gp_gexptostr(*bottom++);
+    Gstring e = Gwrite(*bottom++);
     printf("%s ", Gstrget(&e));
   }
   printf("\n");
@@ -215,41 +213,40 @@ gexp Geval(gexp e) {
 #if DEBUG_VERBOSE
   debug_print_stack(&top_stack);
 #endif
+
   if (!e) {
     return 0;
   }
 
   if (Gpairp(e)) {
-    gexp car = Gexp_car(e);
     gexp car_ret = 0;
-    if (car) {
-      car_ret = Geval(car);
+    if (Gcar(e)) {
+      car_ret = Geval(Gcar(e));
     }
 
     gexp *gsp = 0;
     gsp = top_stack.top - 1;
 
-    gexp cdr = Gexp_cdr(e);
-    if (cdr) {
-      Geval(cdr);
+    if (Gcdr(e)) {
+      Geval(Gcdr(e));
     }
 
     if (car_ret && Gprocp(car_ret)) {
-      gexp ret = op_table[Gexp_unbox_proc(car_ret)](gsp);
+      gexp ret = op_table[Gproc(car_ret)](gsp);
       return ret;
 
     } else {
       return car_ret;
     }
 
-  } else if (Gvoidp(e)) {
+  } else if (Gnullp(e)) {
     return 0;
 
   } else if (Gnumberp(e)) {
     Gpush(e);
 
   } else if (Gsymbolp(e)) {
-    Gstring gs = Gexp_unbox_symbol(e);
+    Gstring gs = Gsymbol(e);
     gexp ret = Gdict_get(top_env, Gstrget(&gs));
     return Geval(ret);
 
@@ -260,42 +257,39 @@ gexp Geval(gexp e) {
   return e;
 }
 
-Gstring gp_gexptostr(gexp e) {
-#define GSTR_NUM_BUFSIZE 21
+Gstring Gwrite(gexp e) {
   Gstring s = {0};
 
   if (!e)
     return (Gstring){0};
 
   if (Gpairp(e)) {
-    gexp car = e->val.pair.car;
-    if (car) {
-      if (!Gatomp(car)) {
+    if (Gcar(e)) {
+      if (!Gatomp(Gcar(e))) {
         s = Gstrl("(", 1);
       }
-      Gstring next = gp_gexptostr(car);
+      Gstring next = Gwrite(Gcar(e));
       Gstrcatl(&s, Gstrget(&next), Gstrlen(&next));
       Gstrdstr(&next);
     }
 
-    gexp cdr = e->val.pair.cdr;
-    if (cdr) {
-      Gstring next = gp_gexptostr(cdr);
-      Gstrcatl(&s, Gstrget(&next), Gstrlen(&next));
+    if (Gcdr(e)) {
+      Gstring next = Gwrite(Gcdr(e));
+      Gstrapp(&s, &next);
       Gstrdstr(&next);
     }
-  } else if (Gvoidp(e)) {
+  } else if (Gnullp(e)) {
     s = Gstrl(")", 1);
 
   } else if (Gfixnump(e)) {
-    char buf[GSTR_NUM_BUFSIZE];
-    snprintf(buf, GSTR_NUM_BUFSIZE, "%ld", e->val.fixnum);
-    s = Gstrl(buf, strlen(buf));
+    char buf[21];
+    snprintf(buf, sizeof(buf), "%ld", e->val.fixnum);
+    s = Gstrl(buf, sizeof(buf));
 
   } else if (Gflonump(e)) {
-    char buf[GSTR_NUM_BUFSIZE];
-    snprintf(buf, GSTR_NUM_BUFSIZE, "%g", e->val.flonum);
-    s = Gstrl(buf, strlen(buf));
+    char buf[21];
+    snprintf(buf, sizeof(buf), "%g", e->val.flonum);
+    s = Gstrl(buf, sizeof(buf));
 
   } else {
     /* symbol */
@@ -303,38 +297,22 @@ Gstring gp_gexptostr(gexp e) {
   }
 
   return s;
-#undef GSTR_NUM_BUFSIZE
 }
 
-Gstring gp_read_and_eval(const char *expr) {
-
-  gexp ast = Gread(expr);
-  if (!ast)
-    return Gstr("Error!");
-
-  gexp ret = Geval(ast);
-  return gp_gexptostr(ret);
-}
-
-void gp_read_print_eval(const char *prompt) {
-  char buf[256];
-  printf("\n%s", prompt);
-  while (fgets(buf, sizeof buf, stdin)) {
-
-    if (buf[0] == '\n') continue;
-    Gstring ret = gp_read_and_eval(buf);
-    printf("%s\n", Gstrget(&ret));
-    printf("%s", prompt);
-  }
-}
-
-int main(int argc, char *argv[static argc + 1]) {
-  GP_UNUSED(argc);
-  GP_UNUSED(argv);
+int setup(void) {
 
   top_heap = Gheap_create(128);
   top_stack = Gstack_create(128);
   top_env = Gdict_create();
+
+  // FIXME: Permanent store through our own allocation
+  obj_true = malloc(sizeof(Gexp_struct));
+  obj_false = malloc(sizeof(Gexp_struct));
+  obj_null = malloc(sizeof(Gexp_struct));
+
+  Gexp_bool(obj_true, 1);
+  Gexp_bool(obj_false, 0);
+  Gexp_null(obj_null);
 
   gexp e = Galloc();
   Gexp_flonum(e, M_PI);
@@ -348,7 +326,34 @@ int main(int argc, char *argv[static argc + 1]) {
   Gexp_proc(e, GEXP_OP_IF);
   Gdict_set(top_env, "if", e);
 
-  gp_read_print_eval("gp> ");
+  return 0;
+}
+
+int main(int argc, char *argv[static argc + 1]) {
+  GP_UNUSED(argc);
+  GP_UNUSED(argv);
+
+  setup();
+
+  /* Loop */
+
+  const char *prompt = "> ";
+  printf("Gameplan Scheme\n");
+  FILE *input = stdin;
+
+  char buf[256];
+  while (1) {
+
+    printf("%s", prompt);
+    char *in = fgets(buf, sizeof(buf), input);
+    if (!in)
+      return 0;
+
+    gexp ast = Gread(buf);
+    gexp ret = Geval(ast);
+    Gstring retstr = Gwrite(ret);
+    printf("%s\n", Gstrget(&retstr));
+  }
 
   return 0;
 }
