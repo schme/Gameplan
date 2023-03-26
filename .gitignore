@@ -1,6 +1,10 @@
-build/
 _zuo.db
 _zuo_tc.db
+compile_commands.json
+
+run_tests
+gameplan
+
 
 *.[oa]
 .cache
